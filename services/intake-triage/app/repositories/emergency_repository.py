@@ -31,9 +31,14 @@ class EmergencyRepository:
         )
 
         if not response.data:
-            raise RuntimeError("Emergency could not be created")
+            raise RuntimeError(
+                "Emergency could not be created"
+            )
 
         created_emergency = response.data[0]
+
+        print("TYPE RECEIVED:", emergency.type)
+        print("IS RESCUE:", emergency.type == EmergencyType.RESCUE)
 
         if emergency.type == EmergencyType.RESCUE:
 
@@ -47,12 +52,17 @@ class EmergencyRepository:
                     emergency.imminent_collapse_risk
             }
 
+            print("CREATED EMERGENCY:", created_emergency)
+            print("RESCUE DATA:", rescue_data)
+
             rescue_response = (
                 self.supabase
                 .table("rescue_details")
                 .insert(rescue_data)
                 .execute()
             )
+
+            print("RESCUE RESPONSE:", rescue_response)
 
             if not rescue_response.data:
                 raise RuntimeError(
