@@ -1,8 +1,28 @@
-FROM python:3.12-slim
+# -------------------------------
+# Stage 1 - Dependencies
+# -------------------------------
+FROM public.ecr.aws/lambda/python:3.12 AS builder
 
-WORKDIR /app
+WORKDIR /build
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN pip install \
+    --no-cache-dir \
+    --target /build/python \
+    -r requirements.txt
+
+
+# -------------------------------
+# Stage 2 - Lambda Runtime
+# -------------------------------
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY --from=builder \
+    /build/python \
+    ${LAMBDA_TASK_ROOT}
+
+COPY app \
+    ${LAMBDA_TASK_ROOT}/app
+
+CMD ["app.main.handler"]

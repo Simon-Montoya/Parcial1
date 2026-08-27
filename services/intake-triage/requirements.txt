@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
 pydantic
+mangum
 supabase
 httpx
 pytest
-mangum
+boto3

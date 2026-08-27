@@ -1,1 +1,9 @@
-
+fastapi
+uvicorn[standard]
+pydantic
+mangum
+supabase
+httpx
+pytest
+boto3
+pytest.ini
