@@ -1,0 +1,138 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  color: #202124;
+}
+
+main {
+  width: min(720px, 92%);
+  margin: 40px auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+}
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  padding: 10px;
+}
+
+textarea {
+  min-height: 90px;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 18px 32px;
+
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.navigation div {
+  display: flex;
+  gap: 20px;
+}
+
+.navigation a {
+  color: #222;
+  text-decoration: none;
+}
+
+.dashboard-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(150px, 1fr));
+
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.metric-card,
+.hotspot-card,
+.emergency-card {
+  padding: 18px;
+  margin-bottom: 14px;
+
+  border: 1px solid #ddd;
+  border-radius: 10px;
+
+  background: #fafafa;
+}
+
+.metric-card h2 {
+  font-size: 32px;
+  margin: 0;
+}
+
+.hotspot-emergencies {
+  margin-top: 20px;
+}
+
+.hotspot-emergency-row {
+  padding: 14px 0;
+  border-top: 1px solid #ddd;
+}
+
+.hotspot-emergency-row code {
+  display: block;
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+
+.hotspot-emergency-row button {
+  width: 100%;
+  cursor: pointer;
+}
+
+.dispatch-success {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.action-error {
+  padding: 12px;
+  border: 1px solid #ccc;
+}
+
+.map-section {
+  margin: 28px 0;
+}
+
+.emergency-map {
+  width: 100%;
+  height: 420px;
+
+  border: 1px solid #ddd;
+  border-radius: 10px;
+
+  overflow: hidden;
+}
