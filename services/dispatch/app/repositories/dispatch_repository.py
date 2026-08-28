@@ -55,7 +55,7 @@ class DispatchRepository:
                 "update_dispatch_status",
                 {
                     "p_dispatch_id": str(dispatch_id),
-                    "p_target_status": status.value,
+                    "p_target_status": status,
                 },
             )
             .execute()
@@ -88,6 +88,7 @@ class DispatchRepository:
             return None
 
         dispatch = response.data[0]
+
         return {
             "dispatch_id": dispatch["id"],
             "emergency_id": dispatch["emergency_id"],
