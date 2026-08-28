@@ -10,7 +10,9 @@ from app.services.dispatch_service import (
     NoAvailableUnitError,
     DispatchNotFoundError,
     InvalidDispatchTransitionError,
+    NoActiveDispatchError,
 )
+from app.repositories.dispatch_repository import DispatchRepository
 
 
 EMERGENCY_ID = UUID("11111111-1111-1111-1111-111111111111")
@@ -27,6 +29,11 @@ class FakeRepository:
         return self.result
 
     def update_status(self, dispatch_id, status):
+        if self.error:
+            raise self.error
+        return self.result
+
+    def find_active_by_emergency(self, emergency_id):
         if self.error:
             raise self.error
         return self.result
@@ -146,3 +153,77 @@ def test_lifecycle_migration_keeps_resolution_atomic_and_auditable():
     assert "set status = 'AVAILABLE'" in migration
     assert "insert into emergency_status_history" in migration
     assert "delete from" not in migration.lower()
+
+
+def test_active_dispatch_found():
+    expected = {
+        "dispatch_id": str(DISPATCH_ID),
+        "emergency_id": str(EMERGENCY_ID),
+        "response_unit_id": "33333333-3333-3333-3333-333333333333",
+        "response_unit_name": "Bomberos Cali Centro",
+        "status": "ASSIGNED",
+        "accepted_at": None,
+        "completed_at": None,
+    }
+    service = DispatchService(FakeRepository(result=expected))
+
+    assert service.get_active_dispatch(EMERGENCY_ID) == expected
+
+
+def test_no_active_dispatch():
+    service = DispatchService(FakeRepository(result=None))
+
+    with pytest.raises(NoActiveDispatchError):
+        service.get_active_dispatch(EMERGENCY_ID)
+
+
+class FakeQuery:
+    def __init__(self, data):
+        self.data = data
+        self.filters = []
+
+    def select(self, columns):
+        return self
+
+    def eq(self, column, value):
+        self.filters.append(("eq", column, value))
+        return self
+
+    def is_(self, column, value):
+        self.filters.append(("is", column, value))
+        return self
+
+    def in_(self, column, values):
+        self.filters.append(("in", column, values))
+        return self
+
+    def order(self, column, desc=False):
+        return self
+
+    def limit(self, count):
+        return self
+
+    def execute(self):
+        return type("Response", (), {"data": self.data})()
+
+
+class FakeSupabase:
+    def __init__(self, data):
+        self.query = FakeQuery(data)
+
+    def table(self, name):
+        assert name == "dispatches"
+        return self.query
+
+
+def test_completed_dispatch_is_not_queried_as_active():
+    client = FakeSupabase(data=[])
+    repository = DispatchRepository(supabase=client)
+
+    assert repository.find_active_by_emergency(EMERGENCY_ID) is None
+    assert ("is", "completed_at", "null") in client.query.filters
+    assert (
+        "in",
+        "emergencies.status",
+        ["ASSIGNED", "IN_PROGRESS"],
+    ) in client.query.filters

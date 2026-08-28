@@ -8,6 +8,7 @@ import {
   assignEmergency,
   broadcastNotification,
   getZoneAggregation,
+  getActiveDispatchByEmergency,
   updateDispatchStatus,
 } from "../services/api";
 
@@ -54,6 +55,44 @@ export default function OperatorDashboard() {
 
   const [notifications, setNotifications] = useState([]);
 
+  const restoreActiveDispatches = useCallback(async (zoneData) => {
+    const hotspotIds = zoneData.hotspots?.flatMap(
+      (hotspot) => hotspot.emergency_ids ?? []
+    ) ?? [];
+    const assignedIsolatedIds = zoneData.isolated_emergencies
+      ?.filter((emergency) =>
+        ["ASSIGNED", "IN_PROGRESS"].includes(emergency.status)
+      )
+      .map((emergency) => emergency.id) ?? [];
+    const emergencyIds = [...new Set([
+      ...hotspotIds,
+      ...assignedIsolatedIds,
+    ])];
+
+    const requests = await Promise.allSettled(
+      emergencyIds.map((emergencyId) =>
+        getActiveDispatchByEmergency(emergencyId)
+      )
+    );
+
+    const restored = requests
+      .filter((request) => request.status === "fulfilled")
+      .map((request) => request.value);
+
+    if (restored.length > 0) {
+      setDispatchResults((previous) => {
+        const next = { ...previous };
+        restored.forEach((dispatch) => {
+          next[dispatch.emergency_id] = {
+            ...previous[dispatch.emergency_id],
+            ...dispatch,
+          };
+        });
+        return next;
+      });
+    }
+  }, []);
+
 
   // --------------------------------------------------
   // Load zone information
@@ -67,6 +106,7 @@ export default function OperatorDashboard() {
       const data = await getZoneAggregation(city);
 
       setZone(data);
+      await restoreActiveDispatches(data);
 
     } catch (err) {
       console.error(
@@ -82,7 +122,7 @@ export default function OperatorDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [city]);
+  }, [city, restoreActiveDispatches]);
 
 
   // --------------------------------------------------
@@ -543,7 +583,9 @@ export default function OperatorDashboard() {
                                   }
                                 </p>
 
-                                <p>
+                                {Number.isFinite(dispatchResults[
+                                  emergencyId
+                                ].distance_meters) && <p>
                                   Distance:{" "}
                                   {(
                                     dispatchResults[
@@ -553,7 +595,7 @@ export default function OperatorDashboard() {
                                     / 1000
                                   ).toFixed(2)}{" "}
                                   km
-                                </p>
+                                </p>}
                               </div>
                             )}
                             {dispatchResults[emergencyId] && (
@@ -694,7 +736,9 @@ export default function OperatorDashboard() {
                           }
                         </p>
 
-                        <p>
+                        {Number.isFinite(dispatchResults[
+                          emergency.id
+                        ].distance_meters) && <p>
                           Distance:{" "}
                           {(
                             dispatchResults[
@@ -704,7 +748,7 @@ export default function OperatorDashboard() {
                             / 1000
                           ).toFixed(2)}{" "}
                           km
-                        </p>
+                        </p>}
                       </div>
                     )}
                     {dispatchResults[emergency.id] && (

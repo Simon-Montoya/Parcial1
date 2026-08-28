@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 
 class DispatchRepository:
 
-    def __init__(self):
-        self.supabase = get_supabase_client()
+    def __init__(self, supabase=None):
+        self.supabase = (
+            supabase if supabase is not None else get_supabase_client()
+        )
 
     def assign_nearest_unit(self, emergency_id: UUID) -> dict:
         logger.info(
@@ -65,3 +67,33 @@ class DispatchRepository:
             )
 
         return response.data[0]
+
+    def find_active_by_emergency(self, emergency_id: UUID) -> dict | None:
+        response = (
+            self.supabase
+            .table("dispatches")
+            .select(
+                "id,emergency_id,response_unit_id,accepted_at,completed_at,"
+                "emergencies!inner(status),response_units!inner(name)"
+            )
+            .eq("emergency_id", str(emergency_id))
+            .is_("completed_at", "null")
+            .in_("emergencies.status", ["ASSIGNED", "IN_PROGRESS"])
+            .order("assigned_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if not response.data:
+            return None
+
+        dispatch = response.data[0]
+        return {
+            "dispatch_id": dispatch["id"],
+            "emergency_id": dispatch["emergency_id"],
+            "response_unit_id": dispatch["response_unit_id"],
+            "response_unit_name": dispatch["response_units"]["name"],
+            "status": dispatch["emergencies"]["status"],
+            "accepted_at": dispatch["accepted_at"],
+            "completed_at": dispatch["completed_at"],
+        }

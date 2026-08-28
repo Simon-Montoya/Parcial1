@@ -118,6 +118,26 @@ export async function updateDispatchStatus(dispatchId, status) {
 }
 
 
+export async function getActiveDispatchByEmergency(emergencyId) {
+  const response = await fetch(
+    `${API_BASE_URL}/v1/despachos/emergencia/${emergencyId}`
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.detail
+        ? JSON.stringify(data.detail)
+        : "Unable to restore active dispatch"
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+
 // ------------------------------------------------------
 // Notifications
 // ------------------------------------------------------

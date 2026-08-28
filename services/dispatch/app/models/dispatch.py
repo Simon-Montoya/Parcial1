@@ -22,6 +22,11 @@ class DispatchLifecycleStatus(str, Enum):
     RESOLVED = "RESOLVED"
 
 
+class ActiveDispatchStatus(str, Enum):
+    ASSIGNED = "ASSIGNED"
+    IN_PROGRESS = "IN_PROGRESS"
+
+
 class DispatchStatusUpdateRequest(BaseModel):
     status: DispatchLifecycleStatus
 
@@ -32,4 +37,14 @@ class DispatchStatusUpdateResponse(BaseModel):
     response_unit_id: UUID
     response_unit_name: str
     status: DispatchLifecycleStatus
+    completed_at: datetime | None = None
+
+
+class ActiveDispatchResponse(BaseModel):
+    dispatch_id: UUID
+    emergency_id: UUID
+    response_unit_id: UUID
+    response_unit_name: str
+    status: ActiveDispatchStatus
+    accepted_at: datetime | None = None
     completed_at: datetime | None = None

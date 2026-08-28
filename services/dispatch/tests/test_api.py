@@ -6,6 +6,7 @@ from app.services.dispatch_service import (
     DispatchNotFoundError,
     InvalidDispatchTransitionError,
     NoAvailableUnitError,
+    NoActiveDispatchError,
 )
 
 
@@ -29,6 +30,17 @@ class FakeDispatchService:
             "completed_at": "2026-08-28T12:00:00+00:00",
         }
 
+    def get_active_dispatch(self, emergency_id):
+        return {
+            "dispatch_id": "22222222-2222-2222-2222-222222222222",
+            "emergency_id": str(emergency_id),
+            "response_unit_id": "33333333-3333-3333-3333-333333333333",
+            "response_unit_name": "Bomberos Cali Centro",
+            "status": "ASSIGNED",
+            "accepted_at": None,
+            "completed_at": None,
+        }
+
 
 class FakeNoUnitService:
     def assign_unit(self, emergency_id):
@@ -40,6 +52,9 @@ class FakeLifecycleErrorService:
         self.error = error
 
     def update_status(self, dispatch_id, status):
+        raise self.error()
+
+    def get_active_dispatch(self, emergency_id):
         raise self.error()
 
 
@@ -176,3 +191,29 @@ def test_unsupported_target_status_returns_422():
     app.dependency_overrides.clear()
 
     assert response.status_code == 422
+
+
+def test_get_active_dispatch():
+    app.dependency_overrides[get_dispatch_service] = (
+        lambda: FakeDispatchService()
+    )
+    response = client.get(
+        "/v1/despachos/emergencia/11111111-1111-1111-1111-111111111111"
+    )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ASSIGNED"
+    assert response.json()["completed_at"] is None
+
+
+def test_get_active_dispatch_returns_404_when_absent():
+    app.dependency_overrides[get_dispatch_service] = lambda: (
+        FakeLifecycleErrorService(NoActiveDispatchError)
+    )
+    response = client.get(
+        "/v1/despachos/emergencia/11111111-1111-1111-1111-111111111111"
+    )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404

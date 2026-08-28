@@ -23,6 +23,10 @@ class InvalidDispatchTransitionError(Exception):
     pass
 
 
+class NoActiveDispatchError(Exception):
+    pass
+
+
 class DispatchService:
 
     def __init__(self, repository=None):
@@ -69,3 +73,9 @@ class DispatchService:
                 raise InvalidDispatchTransitionError() from exc
 
             raise
+
+    def get_active_dispatch(self, emergency_id: UUID) -> dict:
+        dispatch = self.repository.find_active_by_emergency(emergency_id)
+        if dispatch is None:
+            raise NoActiveDispatchError()
+        return dispatch

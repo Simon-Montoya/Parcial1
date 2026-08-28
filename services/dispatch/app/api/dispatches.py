@@ -7,6 +7,7 @@ from app.models.dispatch import (
     DispatchAssignResponse,
     DispatchStatusUpdateRequest,
     DispatchStatusUpdateResponse,
+    ActiveDispatchResponse,
 )
 from app.services.dispatch_service import (
     DispatchService,
@@ -15,6 +16,7 @@ from app.services.dispatch_service import (
     NoAvailableUnitError,
     DispatchNotFoundError,
     InvalidDispatchTransitionError,
+    NoActiveDispatchError,
 )
 
 
@@ -60,6 +62,23 @@ def assign_dispatch(
         raise HTTPException(
             status_code=409,
             detail="No available response unit found",
+        )
+
+
+@router.get(
+    "/emergencia/{emergency_id}",
+    response_model=ActiveDispatchResponse,
+)
+def get_active_dispatch(
+    emergency_id: UUID,
+    service: DispatchService = Depends(get_dispatch_service),
+):
+    try:
+        return service.get_active_dispatch(emergency_id)
+    except NoActiveDispatchError:
+        raise HTTPException(
+            status_code=404,
+            detail="No active dispatch found for this emergency",
         )
 
 
