@@ -1,0 +1,157 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  AWS_REGION: "us-east-1"
+  AWS_ACCOUNT_ID: "432642185003"
+  ECR_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+# -------------------------------------------------------
+# Backend tests
+# -------------------------------------------------------
+
+test:intake:
+  stage: test
+  image: python:3.12
+  script:
+    - cd services/intake-triage
+    - pip install -r requirements.txt
+    - python -m pytest -v
+
+test:dispatch:
+  stage: test
+  image: python:3.12
+  script:
+    - cd services/dispatch
+    - pip install -r requirements.txt
+    - python -m pytest -v
+
+test:geospatial:
+  stage: test
+  image: python:3.12
+  script:
+    - cd services/geospatial
+    - pip install -r requirements.txt
+    - python -m pytest -v
+
+test:notifications:
+  stage: test
+  image: python:3.12
+  script:
+    - cd services/notifications
+    - pip install -r requirements.txt
+    - python -m pytest -v
+
+# -------------------------------------------------------
+# Frontend
+# -------------------------------------------------------
+
+test:frontend:
+  stage: test
+  image: node:22
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+
+# -------------------------------------------------------
+# Shared AWS authentication template
+# -------------------------------------------------------
+
+.aws_oidc:
+  image: amazon/aws-cli:2
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  before_script:
+    - >
+      aws_sts_output=$(aws sts assume-role-with-web-identity
+      --role-arn "${AWS_ROLE_ARN}"
+      --role-session-name "GitLab-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+      --web-identity-token "${GITLAB_OIDC_TOKEN}"
+      --duration-seconds 3600
+      --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+      --output text)
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $aws_sts_output)
+    - aws sts get-caller-identity
+
+# -------------------------------------------------------
+# Docker build & deploy
+# -------------------------------------------------------
+
+deploy:services:
+  stage: deploy
+  image: docker:27
+  services:
+    - docker:27-dind
+
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+
+  before_script:
+    - apk add --no-cache aws-cli
+    - >
+      aws_sts_output=$(aws sts assume-role-with-web-identity
+      --role-arn "${AWS_ROLE_ARN}"
+      --role-session-name "GitLab-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+      --web-identity-token "${GITLAB_OIDC_TOKEN}"
+      --duration-seconds 3600
+      --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+      --output text)
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" $aws_sts_output)
+    - aws sts get-caller-identity
+    - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+  script:
+    - |
+      deploy_service() {
+        SERVICE=$1
+        ECR_NAME=$2
+        LAMBDA_NAME=$3
+
+        IMAGE="${ECR_REGISTRY}/${ECR_NAME}:${CI_COMMIT_SHA}"
+
+        echo "Building ${SERVICE}"
+
+        docker build \
+          --platform linux/amd64 \
+          -t "${IMAGE}" \
+          "services/${SERVICE}"
+
+        docker push "${IMAGE}"
+
+        aws lambda update-function-code \
+          --function-name "${LAMBDA_NAME}" \
+          --image-uri "${IMAGE}" \
+          --region "${AWS_REGION}"
+
+        aws lambda wait function-updated \
+          --function-name "${LAMBDA_NAME}" \
+          --region "${AWS_REGION}"
+      }
+
+      deploy_service \
+        "intake-triage" \
+        "emergency-platform/intake-triage" \
+        "intake-triage-prod"
+
+      deploy_service \
+        "dispatch" \
+        "emergency-platform/dispatch" \
+        "dispatch-prod"
+
+      deploy_service \
+        "geospatial" \
+        "emergency-platform/geospatial" \
+        "geospatial-prod"
+
+      deploy_service \
+        "notifications" \
+        "emergency-platform/notifications" \
+        "notifications-prod"
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
