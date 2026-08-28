@@ -1,31 +1,13 @@
-import {
-  BrowserRouter,
-  Link,
-  Route,
-  Routes,
-} from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import CitizenPage from "./pages/CitizenPage";
+import AppHeader from "./components/AppHeader";
 import OperatorAccess from "./components/OperatorAccess";
+import CitizenPage from "./pages/CitizenPage";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <nav className="navigation">
-        <strong>
-          Emergency Platform
-        </strong>
-
-        <div>
-          <Link to="/">
-            Report Emergency
-          </Link>
-
-          <Link to="/operator">
-            Operator Dashboard
-          </Link>
-        </div>
-      </nav>
+      <AppHeader />
 
       <Routes>
         <Route

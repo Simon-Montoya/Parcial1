@@ -1,14 +1,20 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.models.dispatch import (
     DispatchAssignRequest,
     DispatchAssignResponse,
+    DispatchStatusUpdateRequest,
+    DispatchStatusUpdateResponse,
 )
 from app.services.dispatch_service import (
     DispatchService,
     EmergencyNotAssignableError,
     EmergencyNotFoundError,
     NoAvailableUnitError,
+    DispatchNotFoundError,
+    InvalidDispatchTransitionError,
 )
 
 
@@ -54,4 +60,30 @@ def assign_dispatch(
         raise HTTPException(
             status_code=409,
             detail="No available response unit found",
+        )
+
+
+@router.patch(
+    "/{dispatch_id}",
+    response_model=DispatchStatusUpdateResponse,
+)
+def update_dispatch_status(
+    dispatch_id: UUID,
+    request: DispatchStatusUpdateRequest,
+    service: DispatchService = Depends(get_dispatch_service),
+):
+    try:
+        return service.update_status(
+            dispatch_id=dispatch_id,
+            status=request.status.value,
+        )
+    except DispatchNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="Dispatch not found",
+        )
+    except InvalidDispatchTransitionError:
+        raise HTTPException(
+            status_code=409,
+            detail="Invalid dispatch status transition",
         )

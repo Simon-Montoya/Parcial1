@@ -124,15 +124,18 @@ export default function CitizenPage() {
   };
 
   return (
-    <main>
-      <h1>Emergency Report</h1>
+    <main className="page page--citizen">
+      <header className="page-heading">
+      <span className="eyebrow">Public emergency channel</span>
+      <h1>Report an Emergency</h1>
 
       <p>
         Report an emergency to the regional response
         platform.
       </p>
+      </header>
 
-      <form onSubmit={handleSubmit}>
+      <form className="report-form panel" onSubmit={handleSubmit}>
         <label>
           Emergency type
           <select
@@ -265,6 +268,7 @@ export default function CitizenPage() {
 
             <input
               name="adults"
+              aria-label="Adults"
               type="number"
               min="0"
               placeholder="Adults"
@@ -274,6 +278,7 @@ export default function CitizenPage() {
 
             <input
               name="children"
+              aria-label="Children"
               type="number"
               min="0"
               placeholder="Children"
@@ -283,6 +288,7 @@ export default function CitizenPage() {
 
             <input
               name="elderly"
+              aria-label="Older adults"
               type="number"
               min="0"
               placeholder="Elderly"
@@ -320,6 +326,7 @@ export default function CitizenPage() {
 
             <select
               name="supply_category"
+              aria-label="Supply category"
               value={form.supply_category}
               onChange={updateField}
             >
@@ -335,6 +342,7 @@ export default function CitizenPage() {
 
             <input
               name="quantity"
+              aria-label="Quantity"
               type="number"
               min="0"
               value={form.quantity}
@@ -343,6 +351,7 @@ export default function CitizenPage() {
 
             <textarea
               name="notes"
+              aria-label="Supply notes"
               placeholder="Notes"
               value={form.notes}
               onChange={updateField}
@@ -356,6 +365,7 @@ export default function CitizenPage() {
 
             <input
               name="building_type"
+              aria-label="Building type"
               placeholder="Building type"
               value={form.building_type}
               onChange={updateField}
@@ -363,6 +373,7 @@ export default function CitizenPage() {
 
             <input
               name="cracking_level"
+              aria-label="Cracking level"
               placeholder="Cracking level"
               value={form.cracking_level}
               onChange={updateField}
@@ -370,8 +381,18 @@ export default function CitizenPage() {
 
             <input
               name="settlement_level"
+              aria-label="Settlement level"
               placeholder="Settlement level"
               value={form.settlement_level}
+              onChange={updateField}
+            />
+
+            <input
+              name="photo_url"
+              type="url"
+              aria-label="Photo URL"
+              placeholder="Optional photo URL"
+              value={form.photo_url}
               onChange={updateField}
             />
 
@@ -397,34 +418,44 @@ export default function CitizenPage() {
           </>
         )}
 
-        <button type="submit" disabled={loading}>
+        <button className="button button--danger submit-button" type="submit" disabled={loading}>
           {loading
-            ? "Sending..."
+            ? "Submitting..."
             : "Report emergency"}
         </button>
       </form>
 
       {error && (
-        <p>
-          Error: {error}
+        <p className="alert alert--error" role="alert">
+          Unable to submit the report: {error}
         </p>
       )}
 
       {result && (
-        <section>
-          <h2>Emergency registered</h2>
+        <section className="result-card" aria-live="polite">
+          <span className="result-card__icon" aria-hidden="true">✓</span>
+          <div>
+          <span className="eyebrow">Report received</span>
+          <h2>Emergency reported successfully</h2>
 
           <p>
             ID: {result.id}
           </p>
 
-          <p>
-            Priority: {result.priority}
+          <p className={`badge priority-badge priority-${result.priority?.toLowerCase()}`}>
+            Priority {result.priority}
           </p>
 
-          <p>
-            Status: {result.status}
+          <p className="badge status-badge">
+            {result.status}
           </p>
+          <p>
+            City: {result.city ?? form.city}
+          </p>
+          <p>
+            Type: {(result.type ?? form.type).replaceAll("_", " ")}
+          </p>
+          </div>
         </section>
       )}
     </main>

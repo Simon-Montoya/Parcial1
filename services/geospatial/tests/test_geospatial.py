@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from app.services.geospatial_service import (
     GeospatialService,
@@ -92,3 +93,16 @@ def test_invalid_min_points():
             radius_meters=2000,
             min_points=1,
         )
+
+
+def test_zone_migration_excludes_resolved_emergencies():
+    migration = (
+        Path(__file__).parents[3]
+        / "database"
+        / "migrations"
+        / "004_geospatial_aggregation.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "e.status not in" in migration.lower()
+    assert "'RESOLVED'" in migration
+    assert "'CANCELLED'" in migration

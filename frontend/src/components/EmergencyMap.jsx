@@ -1,9 +1,12 @@
+import { useEffect } from "react";
+
 import {
   Circle,
   MapContainer,
   Marker,
   Popup,
   TileLayer,
+  useMap,
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
@@ -31,6 +34,16 @@ const cityCenters = {
   CHOCO: [5.6919, -76.6583],
 };
 
+function MapViewport({ center }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+
+  return null;
+}
+
 
 export default function EmergencyMap({
   city,
@@ -42,15 +55,20 @@ export default function EmergencyMap({
 
   return (
     <section className="map-section">
-      <h2>
-        Emergency Map
-      </h2>
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Live geographic overview</span>
+          <h2>Emergency Map — {city.charAt(0) + city.slice(1).toLowerCase()}</h2>
+        </div>
+        <span className="map-legend"><i /> Hotspot radius</span>
+      </div>
 
       <MapContainer
         center={center}
         zoom={12}
         className="emergency-map"
       >
+        <MapViewport center={center} />
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

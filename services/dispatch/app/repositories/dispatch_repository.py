@@ -37,3 +37,31 @@ class DispatchRepository:
             )
 
         return response.data[0]
+
+    def update_status(self, dispatch_id: UUID, status: str) -> dict:
+        logger.info(
+            "updating_dispatch_status",
+            extra={
+                "dispatch_id": str(dispatch_id),
+                "target_status": status,
+            },
+        )
+
+        response = (
+            self.supabase
+            .rpc(
+                "update_dispatch_status",
+                {
+                    "p_dispatch_id": str(dispatch_id),
+                    "p_status": status,
+                },
+            )
+            .execute()
+        )
+
+        if not response.data:
+            raise RuntimeError(
+                "Dispatch status update returned no data"
+            )
+
+        return response.data[0]

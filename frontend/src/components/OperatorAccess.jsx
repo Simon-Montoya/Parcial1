@@ -84,8 +84,11 @@ export default function OperatorAccess() {
 
   if (loading) {
     return (
-      <main>
-        <p>Verifying operator access...</p>
+      <main className="page auth-page">
+        <div className="loading-state" role="status">
+          <span className="spinner" aria-hidden="true" />
+          <p>Verifying operator access...</p>
+        </div>
       </main>
     );
   }
@@ -102,8 +105,8 @@ export default function OperatorAccess() {
   return (
     <>
       <div className="operator-session-actions">
-        <span>{operatorSession.user.email}</span>
-        <button type="button" onClick={handleLogout}>
+        <span><i aria-hidden="true" /> Operator · {operatorSession.user.email}</span>
+        <button className="button button--ghost" type="button" onClick={handleLogout}>
           Logout
         </button>
       </div>

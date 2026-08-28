@@ -15,6 +15,14 @@ class NoAvailableUnitError(Exception):
     pass
 
 
+class DispatchNotFoundError(Exception):
+    pass
+
+
+class InvalidDispatchTransitionError(Exception):
+    pass
+
+
 class DispatchService:
 
     def __init__(self, repository=None):
@@ -41,5 +49,23 @@ class DispatchService:
 
             if "NO_AVAILABLE_UNIT" in message:
                 raise NoAvailableUnitError() from exc
+
+            raise
+
+    def update_status(self, dispatch_id: UUID, status: str) -> dict:
+        try:
+            return self.repository.update_status(dispatch_id, status)
+        except Exception as exc:
+            message = str(exc)
+
+            if "DISPATCH_NOT_FOUND" in message:
+                raise DispatchNotFoundError() from exc
+
+            if any(code in message for code in (
+                "INVALID_TARGET_STATUS",
+                "INVALID_STATUS_TRANSITION",
+                "ALREADY_RESOLVED",
+            )):
+                raise InvalidDispatchTransitionError() from exc
 
             raise

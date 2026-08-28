@@ -90,6 +90,34 @@ export async function assignEmergency(emergencyId) {
 }
 
 
+export async function updateDispatchStatus(dispatchId, status) {
+  const response = await fetch(
+    `${API_BASE_URL}/v1/despachos/${dispatchId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.detail
+        ? JSON.stringify(data.detail)
+        : "Unable to update dispatch status"
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+
 // ------------------------------------------------------
 // Notifications
 // ------------------------------------------------------

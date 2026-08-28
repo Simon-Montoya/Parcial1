@@ -25,7 +25,11 @@ export default function OperatorLogin({
         });
 
       if (signInError) {
-        setError(signInError.message);
+        setError(
+          /invalid login credentials/i.test(signInError.message)
+            ? "Invalid credentials"
+            : "Unable to sign in"
+        );
         return;
       }
 
@@ -38,8 +42,11 @@ export default function OperatorLogin({
   };
 
   return (
-    <main>
-      <h1>Operator sign in</h1>
+    <main className="page auth-page">
+      <section className="auth-card panel">
+      <div className="auth-card__mark" aria-hidden="true">ER</div>
+      <span className="eyebrow">Restricted workspace</span>
+      <h1>Operator Access</h1>
 
       <p>
         Sign in with an authorized emergency operator
@@ -73,7 +80,7 @@ export default function OperatorLogin({
           />
         </label>
 
-        <button type="submit" disabled={loading}>
+        <button className="button button--primary" type="submit" disabled={loading}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
@@ -83,6 +90,7 @@ export default function OperatorLogin({
           {error || accessError}
         </p>
       )}
+      </section>
     </main>
   );
 }

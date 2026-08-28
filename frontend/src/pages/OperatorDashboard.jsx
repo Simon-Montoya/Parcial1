@@ -8,6 +8,7 @@ import {
   assignEmergency,
   broadcastNotification,
   getZoneAggregation,
+  updateDispatchStatus,
 } from "../services/api";
 
 import {
@@ -15,6 +16,10 @@ import {
 } from "../hooks/useRealtimeNotifications";
 
 import EmergencyMap from "../components/EmergencyMap";
+import MetricCard from "../components/MetricCard";
+import NotificationPanel from "../components/NotificationPanel";
+import PriorityBadge from "../components/PriorityBadge";
+import StatusBadge from "../components/StatusBadge";
 
 
 const cities = [
@@ -41,12 +46,13 @@ export default function OperatorDashboard() {
   const [actionError, setActionError] = useState("");
 
   const [assigningId, setAssigningId] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState("");
 
   const [dispatchResults, setDispatchResults] =
     useState({});
 
-  const [lastNotification, setLastNotification] =
-    useState(null);
+  const [notifications, setNotifications] = useState([]);
 
 
   // --------------------------------------------------
@@ -100,7 +106,12 @@ export default function OperatorDashboard() {
           notification
         );
 
-        setLastNotification(notification);
+        setNotifications((previous) => {
+          const withoutDuplicate = previous.filter(
+            (item) => item.id !== notification.id
+          );
+          return [notification, ...withoutDuplicate].slice(0, 10);
+        });
 
         // Reload geographical data whenever
         // a new notification is inserted.
@@ -128,6 +139,7 @@ export default function OperatorDashboard() {
   ) => {
     setAssigningId(emergencyId);
     setActionError("");
+    setActionSuccess("");
 
     try {
       // 1. Dispatch
@@ -162,12 +174,61 @@ export default function OperatorDashboard() {
       );
 
       setActionError(
-        err.message ||
-          "Unable to assign response unit."
+        /no available|not available for assignment/i.test(err.message)
+          ? "No available response unit can be assigned to this emergency."
+          : err.message || "Unable to assign response unit."
       );
 
     } finally {
       setAssigningId(null);
+    }
+  };
+
+  const handleDispatchStatus = async (emergencyId, status) => {
+    const dispatch = dispatchResults[emergencyId];
+    if (!dispatch?.dispatch_id) return;
+
+    setUpdatingId(emergencyId);
+    setActionError("");
+    setActionSuccess("");
+
+    try {
+      const updated = await updateDispatchStatus(
+        dispatch.dispatch_id,
+        status
+      );
+
+      setDispatchResults((previous) => ({
+        ...previous,
+        [emergencyId]: { ...previous[emergencyId], ...updated },
+      }));
+
+      const message = status === "RESOLVED"
+        ? "Emergency resolved successfully."
+        : "Emergency response is now in progress.";
+
+      try {
+        await broadcastNotification(emergencyId, status, message);
+      } catch {
+        setActionError(
+          "The status was updated, but its notification could not be sent."
+        );
+      }
+
+      setActionSuccess(
+        status === "RESOLVED"
+          ? `Emergency resolved. ${updated.response_unit_name} is now available.`
+          : "Emergency response started."
+      );
+      await loadZone();
+    } catch (statusError) {
+      setActionError(
+        statusError.status === 409
+          ? "This dispatch cannot move to the requested status."
+          : statusError.message || "Unable to update the dispatch."
+      );
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -177,7 +238,7 @@ export default function OperatorDashboard() {
   // --------------------------------------------------
 
   return (
-    <main>
+    <main className="page page--operator">
       <h1>
         Emergency Operations Dashboard
       </h1>
@@ -192,6 +253,7 @@ export default function OperatorDashboard() {
       {/* City selector */}
       {/* -------------------------------------------- */}
 
+      <section className="dashboard-toolbar panel" aria-label="Dashboard filters">
       <label>
         City
 
@@ -215,6 +277,7 @@ export default function OperatorDashboard() {
 
       {/* Manual refresh can remain as backup */}
       <button
+        className="button button--secondary"
         type="button"
         onClick={loadZone}
         disabled={loading}
@@ -223,6 +286,7 @@ export default function OperatorDashboard() {
           ? "Loading..."
           : "Refresh"}
       </button>
+      </section>
 
 
       {/* -------------------------------------------- */}
@@ -242,12 +306,18 @@ export default function OperatorDashboard() {
         </p>
       )}
 
+      {actionSuccess && (
+        <p className="action-success" role="status">
+          {actionSuccess}
+        </p>
+      )}
+
 
       {/* -------------------------------------------- */}
       {/* Realtime feedback */}
       {/* -------------------------------------------- */}
 
-      {lastNotification && (
+      {notifications[0] && (
         <section className="realtime-message">
           <strong>
             Realtime update received
@@ -255,14 +325,14 @@ export default function OperatorDashboard() {
 
           <p>
             {
-              lastNotification.message
+              notifications[0].message
             }
           </p>
 
           <p>
             Emergency:{" "}
             {
-              lastNotification
+              notifications[0]
                 .emergency_id
             }
           </p>
@@ -292,6 +362,7 @@ export default function OperatorDashboard() {
                 Active emergencies
               </p>
             </article>
+            <MetricCard label="Selected city" value={city} tone="city" />
 
 
             <article className="metric-card">
@@ -427,7 +498,7 @@ export default function OperatorDashboard() {
                             }
                             className="hotspot-emergency-row"
                           >
-                            <code>
+                            <code title={emergencyId}>
                               {
                                 emergencyId
                               }
@@ -474,15 +545,25 @@ export default function OperatorDashboard() {
 
                                 <p>
                                   Distance:{" "}
-                                  {Math.round(
+                                  {(
                                     dispatchResults[
                                       emergencyId
                                     ]
                                       .distance_meters
-                                  )}{" "}
-                                  m
+                                    / 1000
+                                  ).toFixed(2)}{" "}
+                                  km
                                 </p>
                               </div>
+                            )}
+                            {dispatchResults[emergencyId] && (
+                              <LifecycleActions
+                                dispatch={dispatchResults[emergencyId]}
+                                loading={updatingId === emergencyId}
+                                onUpdate={(status) =>
+                                  handleDispatchStatus(emergencyId, status)
+                                }
+                              />
                             )}
                           </div>
                         )
@@ -492,6 +573,14 @@ export default function OperatorDashboard() {
               )
             )}
           </section>
+
+          {zone.total_active_emergencies === 0 && (
+            <div className="empty-state">
+              <strong>No active emergencies in {city}.</strong>
+              <p>The dashboard will refresh when new reports arrive.</p>
+            </div>
+          )}
+          <NotificationPanel notifications={notifications} />
 
 
           {/* ---------------------------------------- */}
@@ -523,6 +612,16 @@ export default function OperatorDashboard() {
                       emergency.id
                     }
                   >
+                    <code className="emergency-id" title={emergency.id}>
+                      Emergency {emergency.id}
+                    </code>
+                    <div className="badge-row">
+                      <PriorityBadge priority={emergency.priority} />
+                      <StatusBadge status={emergency.status} />
+                      <span className="badge badge--neutral">
+                        {emergency.type?.replaceAll("_", " ")}
+                      </span>
+                    </div>
                     <strong>
                       {
                         emergency.priority
@@ -597,15 +696,25 @@ export default function OperatorDashboard() {
 
                         <p>
                           Distance:{" "}
-                          {Math.round(
+                          {(
                             dispatchResults[
                               emergency.id
                             ]
                               .distance_meters
-                          )}{" "}
-                          m
+                            / 1000
+                          ).toFixed(2)}{" "}
+                          km
                         </p>
                       </div>
+                    )}
+                    {dispatchResults[emergency.id] && (
+                      <LifecycleActions
+                        dispatch={dispatchResults[emergency.id]}
+                        loading={updatingId === emergency.id}
+                        onUpdate={(status) =>
+                          handleDispatchStatus(emergency.id, status)
+                        }
+                      />
                     )}
                   </article>
                 )
@@ -614,5 +723,35 @@ export default function OperatorDashboard() {
         </>
       )}
     </main>
+  );
+}
+
+
+function LifecycleActions({ dispatch, loading, onUpdate }) {
+  const status = dispatch.status ?? "ASSIGNED";
+
+  if (status === "RESOLVED") return null;
+
+  return (
+    <div className="lifecycle-actions" aria-label="Dispatch lifecycle actions">
+      {status === "ASSIGNED" && (
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={loading}
+          onClick={() => onUpdate("IN_PROGRESS")}
+        >
+          {loading ? "Updating..." : "Start response"}
+        </button>
+      )}
+      <button
+        className="button button--danger"
+        type="button"
+        disabled={loading}
+        onClick={() => onUpdate("RESOLVED")}
+      >
+        {loading ? "Completing..." : "Complete Emergency"}
+      </button>
+    </div>
   );
 }
