@@ -71,5 +71,5 @@ def create_emergency(
 
         raise HTTPException(
             status_code=500,
-            detail=str(exc),
+            detail="Emergency could not be created",
         ) from exc

@@ -57,3 +57,30 @@ def test_negative_trapped_people():
 
     with pytest.raises(ValidationError):
         EmergencyCreate(**payload)
+
+
+def test_negative_shelter_people():
+    payload = valid_rescue_payload() | {
+        "type": "SHELTER",
+        "adults": -1,
+    }
+
+    with pytest.raises(ValidationError):
+        EmergencyCreate(**payload)
+
+
+def test_supply_requires_category():
+    payload = valid_rescue_payload() | {"type": "SUPPLY"}
+
+    with pytest.raises(ValidationError):
+        EmergencyCreate(**payload)
+
+
+def test_structural_damage_requires_building_type():
+    payload = valid_rescue_payload() | {
+        "type": "STRUCTURAL_DAMAGE",
+        "building_type": "",
+    }
+
+    with pytest.raises(ValidationError):
+        EmergencyCreate(**payload)
