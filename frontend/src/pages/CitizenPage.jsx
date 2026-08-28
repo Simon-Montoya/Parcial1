@@ -88,15 +88,21 @@ export default function CitizenPage() {
         };
 
       case "STRUCTURAL_DAMAGE":
-        return {
+        const structuralPayload = {
           ...base,
-          building_type: form.building_type,
+          building_type: form.building_type.trim(),
           cracking_level: form.cracking_level,
           settlement_level: form.settlement_level,
           collapse_risk: form.collapse_risk,
           road_risk: form.road_risk,
-          photo_url: form.photo_url || null,
         };
+
+        return form.photo_url.trim()
+          ? {
+              ...structuralPayload,
+              photo_url: form.photo_url.trim(),
+            }
+          : structuralPayload;
 
       default:
         return base;
@@ -106,9 +112,18 @@ export default function CitizenPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    setLoading(true);
     setResult(null);
     setError("");
+
+    if (
+      form.type === "STRUCTURAL_DAMAGE"
+      && !form.building_type.trim()
+    ) {
+      setError("Building type is required for structural damage reports.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await createEmergency(
@@ -366,10 +381,21 @@ export default function CitizenPage() {
             <input
               name="building_type"
               aria-label="Building type"
+              aria-describedby="building-type-help"
               placeholder="Building type"
               value={form.building_type}
               onChange={updateField}
+              onInvalid={(event) => {
+                event.preventDefault();
+                setError(
+                  "Building type is required for structural damage reports."
+                );
+              }}
+              required
             />
+            <small id="building-type-help">
+              Required. Describe the affected structure.
+            </small>
 
             <input
               name="cracking_level"
