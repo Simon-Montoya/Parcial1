@@ -18,6 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://parcial1patronesarquitectonicos.vercel.app",
     ],
     allow_credentials=False,
     allow_methods=["*"],
