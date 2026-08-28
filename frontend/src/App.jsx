@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 
 import CitizenPage from "./pages/CitizenPage";
-import OperatorDashboard from "./pages/OperatorDashboard";
+import OperatorAccess from "./components/OperatorAccess";
 
 export default function App() {
   return (
@@ -35,7 +35,7 @@ export default function App() {
 
         <Route
           path="/operator"
-          element={<OperatorDashboard />}
+          element={<OperatorAccess />}
         />
       </Routes>
     </BrowserRouter>
