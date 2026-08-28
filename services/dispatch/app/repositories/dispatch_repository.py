@@ -55,7 +55,7 @@ class DispatchRepository:
                 "update_dispatch_status",
                 {
                     "p_dispatch_id": str(dispatch_id),
-                    "p_status": status,
+                    "p_target_status": status.value,
                 },
             )
             .execute()
